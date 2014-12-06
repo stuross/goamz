@@ -16,7 +16,6 @@ import (
 	"encoding/base64"
 	"encoding/xml"
 	"fmt"
-	"github.com/mitchellh/goamz/aws"
 	"io"
 	"io/ioutil"
 	"log"
@@ -27,6 +26,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/mitchellh/goamz/aws"
 )
 
 const debug = false
@@ -333,7 +334,7 @@ func (b *Bucket) PutReaderHeader(path string, r io.Reader, length int64, customH
 /*
 Copy - copy objects inside bucket
 */
-func (b *Bucket) Copy(oldPath, newPath string, perm ACL) error {
+func (b *Bucket) Copy(oldPath, newPath string, perm ACL) (*http.Response, error) {
 	if !strings.HasPrefix(oldPath, "/") {
 		oldPath = "/" + oldPath
 	}
@@ -350,18 +351,18 @@ func (b *Bucket) Copy(oldPath, newPath string, perm ACL) error {
 
 	err := b.S3.prepare(req)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	for attempt := attempts.Start(); attempt.Next(); {
-		_, err = b.S3.run(req, nil)
+		resp, err := b.S3.run(req, nil)
 		if shouldRetry(err) && attempt.HasNext() {
 			continue
 		}
 		if err != nil {
-			return err
+			return nil, err
 		}
-		return nil
+		return resp, nil
 	}
 	panic("unreachable")
 }
